@@ -33,9 +33,25 @@ async function run() {
 
         // Parcel API
         app.get('/parcels', async (req, res) => {
-            const parcels = await parcelCollection.find().toArray();
-            res.send(parcels);
+            try {
+                const userEmail = req.query.email;
+
+                const query = userEmail ? { created_by: userEmail } : {};
+
+                const options = {
+                    sort: { creation_date: -1 }   // সবচেয়ে নতুন parcel উপরে
+                };
+
+                const parcels = await parcelCollection.find(query, options).toArray();
+
+                res.status(200).send(parcels);
+
+            } catch (error) {
+                console.error("Error fetching parcels:", error);
+                res.status(500).send({ message: "Failed to retrieve parcels" });
+            }
         });
+
 
         app.post('/parcels', async (req, res) => {
             try {
