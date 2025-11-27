@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -39,7 +39,7 @@ async function run() {
                 const query = userEmail ? { created_by: userEmail } : {};
 
                 const options = {
-                    sort: { creation_date: -1 }   // সবচেয়ে নতুন parcel উপরে
+                    sort: { creation_date: -1 }
                 };
 
                 const parcels = await parcelCollection.find(query, options).toArray();
@@ -64,6 +64,23 @@ async function run() {
                 res.status(500).send({ message: "Failed to create parcel" })
             }
         });
+
+        app.delete('/parcels/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
+                
+                // if (result.deletedCount === 0) {
+                //     return res.status(404).send({ message: "Parcel not found" });
+                // }
+                
+                res.send(result);
+            } catch (error) {
+                console.log('Error Deleted parcel:', error);
+                res.status(500).send({ message: "Failed to deleted parcel" })
+            }
+        })
 
 
 
