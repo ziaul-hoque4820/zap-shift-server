@@ -33,6 +33,12 @@ async function run() {
 
         // Parcel API
         app.get('/parcels', async (req, res) => {
+            const parcel = await parcelCollection.find().toArray();
+            res.send(parcel);
+        });
+
+        // sort parcels by email id
+        app.get('/parcels', async (req, res) => {
             try {
                 const userEmail = req.query.email;
 
@@ -49,6 +55,25 @@ async function run() {
             } catch (error) {
                 console.error("Error fetching parcels:", error);
                 res.status(500).send({ message: "Failed to retrieve parcels" });
+            }
+        });
+
+        // get a specific parcel by ID
+        app.get('/parcels/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const parcel = await parcelCollection.findOne({ _id: new ObjectId(id) });
+
+                if (!parcel) {
+                    return res.status(400).send({ message: "Parcel not found" })
+                }
+
+                res.send(parcel);
+                
+            } catch (error) {
+                console.error("Error fetching parcels:", error);
+                res.status(500).send({ message: "Failed to get parcels" });
             }
         });
 
@@ -70,11 +95,11 @@ async function run() {
                 const id = req.params.id;
 
                 const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
-                
+
                 // if (result.deletedCount === 0) {
                 //     return res.status(404).send({ message: "Parcel not found" });
                 // }
-                
+
                 res.send(result);
             } catch (error) {
                 console.log('Error Deleted parcel:', error);
