@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
-
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -10,7 +9,8 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-
+// stripe key
+const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_KEY);
 
 const uri = `mongodb+srv://${process.env.ZAPSHIFT_DB_USER}:${process.env.ZAPSHIFT_DB_PASSWORD}@cluster0.kogn06a.mongodb.net/?appName=Cluster0`;
 
@@ -70,7 +70,7 @@ async function run() {
                 }
 
                 res.send(parcel);
-                
+
             } catch (error) {
                 console.error("Error fetching parcels:", error);
                 res.status(500).send({ message: "Failed to get parcels" });
@@ -105,7 +105,55 @@ async function run() {
                 console.log('Error Deleted parcel:', error);
                 res.status(500).send({ message: "Failed to deleted parcel" })
             }
-        })
+        });
+
+        // Create a Payment Intent
+        app.post("/create-payment-intent", async (req, res) => {
+            try {
+                const { amount } = req.body;
+                console.log(amount);
+                
+
+                if (!amount || amount < 1) {
+                    return res.status(400).send({ message: "Invalid amount" });
+                }
+
+                // Convert to cents (Stripe expects smallest currency unit)
+                const convertedAmount = Math.round(amount * 100);
+
+                const paymentIntent = await stripe.paymentIntents.create({
+                    amount: convertedAmount,
+                    currency: "usd",
+                });
+
+                res.send({
+                    clientSecret: paymentIntent.client_secret
+                });
+
+            } catch (error) {
+                console.error("Error creating payment intent:", error);
+                res.status(500).send({ message: "Payment Intent creation failed" });
+            }
+        });
+
+
+        app.get("/intent-status/:id", async (req, res) => {
+            try {
+                const intentId = req.params.id;
+
+                const paymentIntent = await stripe.paymentIntents.retrieve(intentId);
+
+                res.send({
+                    id: paymentIntent.id,
+                    status: paymentIntent.status
+                });
+
+            } catch (error) {
+                console.error("Error fetching intent:", error);
+                res.status(500).send({ message: "Failed to get payment intent" });
+            }
+        });
+
 
 
 
