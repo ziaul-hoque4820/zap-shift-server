@@ -112,7 +112,7 @@ async function run() {
             try {
                 const { amount } = req.body;
                 console.log(amount);
-                
+
 
                 if (!amount || amount < 1) {
                     return res.status(400).send({ message: "Invalid amount" });
@@ -153,6 +153,41 @@ async function run() {
                 res.status(500).send({ message: "Failed to get payment intent" });
             }
         });
+
+        // Update parcel payment status
+        app.patch("/parcel/payment-success/:parcelId", async (req, res) => {
+            try {
+                const parcelId = req.params.parcelId;
+                const { paymentIntentId, amount, userEmail } = req.body;
+
+                if (!paymentIntentId || !amount || !userEmail) {
+                    return res.status(400).send({ message: "Missing payment details" });
+                }
+
+                const result = await parcelCollection.updateOne(
+                    { _id: new ObjectId(parcelId) },
+                    {
+                        $set: {
+                            payment_status: "paid",
+                            payment_intent_id: paymentIntentId,
+                            paid_amount: amount,
+                            paid_at: new Date(),
+                        }
+                    }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ message: "Parcel not found" });
+                }
+
+                res.send({ success: true, message: "Payment updated successfully" });
+
+            } catch (error) {
+                console.error(error);
+                res.status(500).send({ message: "Failed to update payment" });
+            }
+        });
+
 
 
 
