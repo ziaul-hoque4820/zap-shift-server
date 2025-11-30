@@ -30,12 +30,13 @@ async function run() {
 
         // data collection
         const parcelCollection = client.db('parcelDB').collection('parcels');
+        const paymentCollection = client.db('parcelDB').collection('payments');
 
         // Parcel API
-        app.get('/parcels', async (req, res) => {
-            const parcel = await parcelCollection.find().toArray();
-            res.send(parcel);
-        });
+        // app.get('/parcels', async (req, res) => {
+        //     const parcel = await parcelCollection.find().toArray();
+        //     res.send(parcel);
+        // });
 
         // sort parcels by email id
         app.get('/parcels', async (req, res) => {
@@ -44,11 +45,10 @@ async function run() {
 
                 const query = userEmail ? { created_by: userEmail } : {};
 
-                const options = {
-                    sort: { creation_date: -1 }
-                };
-
-                const parcels = await parcelCollection.find(query, options).toArray();
+                const parcels = await parcelCollection
+                    .find(query)
+                    .sort({ creation_date: -1 })  // NEWEST FIRST
+                    .toArray();
 
                 res.status(200).send(parcels);
 
@@ -158,7 +158,7 @@ async function run() {
         app.patch("/parcel/payment-success/:parcelId", async (req, res) => {
             try {
                 const parcelId = req.params.parcelId;
-                const { paymentIntentId, amount, userEmail } = req.body;
+                const { paymentIntentId, amount, userEmail, paymentMethod } = req.body;
 
                 if (!paymentIntentId || !amount || !userEmail) {
                     return res.status(400).send({ message: "Missing payment details" });
@@ -169,6 +169,7 @@ async function run() {
                     {
                         $set: {
                             payment_status: "paid",
+                            payment_method: paymentMethod,
                             payment_intent_id: paymentIntentId,
                             paid_amount: amount,
                             paid_at: new Date(),
@@ -180,7 +181,19 @@ async function run() {
                     return res.status(404).send({ message: "Parcel not found" });
                 }
 
-                res.send({ success: true, message: "Payment updated successfully" });
+                // SAVE PAYMENT HISTORY
+                const paymentDoc = {
+                    parcelId,
+                    paymentIntentId,
+                    amount,
+                    userEmail,
+                    status: 'succeeded',
+                    date: new Date(),
+                }
+
+                const paymentResult = await paymentCollection.insertOne(paymentDoc);
+
+                res.send({ success: true, message: "Payment updated successfully & history saved", result, paymentResult });
 
             } catch (error) {
                 console.error(error);
@@ -188,6 +201,27 @@ async function run() {
             }
         });
 
+
+        // Payment API
+        app.get("/payments", async (req, res) => {
+            try {
+                const userEmail = req.query.email;
+
+                if (!userEmail) {
+                    return res.status(400).send({ message: "Email is required" });
+                }
+
+                const payments = await paymentCollection
+                    .find({ userEmail })
+                    .sort({ date: -1 })
+                    .toArray();
+
+                res.send(payments);
+
+            } catch (error) {
+                res.status(500).send({ message: "Failed to fetch payments", payments });
+            }
+        });
 
 
 
