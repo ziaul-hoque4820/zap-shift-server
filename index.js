@@ -4,10 +4,21 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
+const admin = require("firebase-admin");
 
 //middleware
 app.use(cors());
 app.use(express.json());
+
+
+// firebase admin initialization
+const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+
 
 // stripe key
 const stripe = require("stripe")(process.env.PAYMENT_GATEWAY_KEY);
@@ -33,10 +44,29 @@ async function run() {
         const parcelCollection = client.db('parcelDB').collection('parcels');
         const paymentCollection = client.db('parcelDB').collection('payments');
 
+
+        //custom middleware to verify admin
+        const verifyFirebaseToken = async (req, res, next) => {
+            try {
+                const token = req?.headers?.authorization?.split(' ')[1];
+                if (!token) {
+                    return res.status(401).send({ error: true, message: 'unauthorized access' });
+                }
+
+                const decodedUser = await admin.auth().verifyIdToken(token);
+                req.decodedEmail = decodedUser.email;
+                next();
+            } catch (err) {
+                console.error('Firebase token verify error:', err);
+                res.status(403).send({ error: true, message: 'forbidden access' });
+            }
+        };
+
+
         // users API
         app.post('/users', async (req, res) => {
             try {
-                const {email} = req.body;
+                const { email } = req.body;
                 const userExists = await usersCollection.findOne({ email });
 
                 if (userExists) {
@@ -47,13 +77,13 @@ async function run() {
                 const result = await usersCollection.insertOne(user);
                 res.send(result);
             } catch (error) {
-                console.error("Error fetching parcels:", error);
+                console.error("Error creating user:", error);
                 res.status(500).send({ message: "Failed to Create Users" });
             }
         })
 
         // sort parcels by email id
-        app.get('/parcels', async (req, res) => {
+        app.get('/parcels', verifyFirebaseToken,  async (req, res) => {
             try {
                 const userEmail = req.query.email;
 
@@ -73,7 +103,7 @@ async function run() {
         });
 
         // get a specific parcel by ID
-        app.get('/parcels/:id', async (req, res) => {
+        app.get('/parcels/:id', verifyFirebaseToken, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -92,7 +122,7 @@ async function run() {
         });
 
 
-        app.post('/parcels', async (req, res) => {
+        app.post('/parcels', verifyFirebaseToken, async (req, res) => {
             try {
                 const newParcel = req.body;
 
@@ -104,15 +134,11 @@ async function run() {
             }
         });
 
-        app.delete('/parcels/:id', async (req, res) => {
+        app.delete('/parcels/:id', verifyFirebaseToken, async (req, res) => {
             try {
                 const id = req.params.id;
 
                 const result = await parcelCollection.deleteOne({ _id: new ObjectId(id) });
-
-                // if (result.deletedCount === 0) {
-                //     return res.status(404).send({ message: "Parcel not found" });
-                // }
 
                 res.send(result);
             } catch (error) {
@@ -122,7 +148,7 @@ async function run() {
         });
 
         // Create a Payment Intent
-        app.post("/create-payment-intent", async (req, res) => {
+        app.post("/create-payment-intent", verifyFirebaseToken, async (req, res) => {
             try {
                 const { amount } = req.body;
                 console.log(amount);
@@ -151,7 +177,7 @@ async function run() {
         });
 
 
-        app.get("/intent-status/:id", async (req, res) => {
+        app.get("/intent-status/:id", verifyFirebaseToken, async (req, res) => {
             try {
                 const intentId = req.params.id;
 
@@ -169,7 +195,7 @@ async function run() {
         });
 
         // Update parcel payment status
-        app.patch("/parcel/payment-success/:parcelId", async (req, res) => {
+        app.patch("/parcel/payment-success/:parcelId", verifyFirebaseToken, async (req, res) => {
             try {
                 const parcelId = req.params.parcelId;
                 const { paymentIntentId, amount, userEmail, paymentMethod } = req.body;
@@ -217,7 +243,7 @@ async function run() {
 
 
         // Payment API
-        app.get("/payments", async (req, res) => {
+        app.get("/payments", verifyFirebaseToken, async (req, res) => {
             try {
                 const userEmail = req.query.email;
 
@@ -233,7 +259,8 @@ async function run() {
                 res.send(payments);
 
             } catch (error) {
-                res.status(500).send({ message: "Failed to fetch payments", payments });
+                res.status(500).send({ message: "Failed to fetch payments" });
+                console.error("Error fetching payments:", error);
             }
         });
 
