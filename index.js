@@ -29,14 +29,28 @@ async function run() {
         await client.connect();
 
         // data collection
+        const usersCollection = client.db('parcelDB').collection('users');
         const parcelCollection = client.db('parcelDB').collection('parcels');
         const paymentCollection = client.db('parcelDB').collection('payments');
 
-        // Parcel API
-        // app.get('/parcels', async (req, res) => {
-        //     const parcel = await parcelCollection.find().toArray();
-        //     res.send(parcel);
-        // });
+        // users API
+        app.post('/users', async (req, res) => {
+            try {
+                const {email} = req.body;
+                const userExists = await usersCollection.findOne({ email });
+
+                if (userExists) {
+                    return res.status(200).send({ message: "User already exists", inserted: false });
+                }
+
+                const user = req.body;
+                const result = await usersCollection.insertOne(user);
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching parcels:", error);
+                res.status(500).send({ message: "Failed to Create Users" });
+            }
+        })
 
         // sort parcels by email id
         app.get('/parcels', async (req, res) => {
@@ -222,7 +236,6 @@ async function run() {
                 res.status(500).send({ message: "Failed to fetch payments", payments });
             }
         });
-
 
 
 
