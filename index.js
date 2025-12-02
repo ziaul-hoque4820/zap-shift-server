@@ -43,6 +43,7 @@ async function run() {
         const usersCollection = client.db('parcelDB').collection('users');
         const parcelCollection = client.db('parcelDB').collection('parcels');
         const paymentCollection = client.db('parcelDB').collection('payments');
+        const ridersCollection = client.db('parcelDB').collection('riders');
 
 
         //custom middleware to verify admin
@@ -83,7 +84,7 @@ async function run() {
         })
 
         // sort parcels by email id
-        app.get('/parcels', verifyFirebaseToken,  async (req, res) => {
+        app.get('/parcels', verifyFirebaseToken, async (req, res) => {
             try {
                 const userEmail = req.query.email;
 
@@ -146,6 +147,36 @@ async function run() {
                 res.status(500).send({ message: "Failed to deleted parcel" })
             }
         });
+
+        // Riders API
+        app.post('/riders', async (req, res) => {
+            try {
+                const rider = req.body;
+
+                if (!rider || !rider.email) {
+                    return res.status(400).send({ message: "Rider email is required" });
+                }
+
+                // Step 1: Check if rider already exists
+                const existingRider = await ridersCollection.findOne({ email: rider.email });
+
+                if (existingRider) {
+                    return res.status(409).send({
+                        message: "You already have a Rider Profile. Duplicate creation not allowed."
+                    });
+                }
+
+                // Step 2: Create new rider
+                const result = await ridersCollection.insertOne(rider);
+                res.status(201).send(result);
+
+            } catch (error) {
+                console.error("Error creating Rider:", error);
+                res.status(500).send({ message: "New Rider creation failed" });
+            }
+        });
+        ;
+
 
         // Create a Payment Intent
         app.post("/create-payment-intent", verifyFirebaseToken, async (req, res) => {
