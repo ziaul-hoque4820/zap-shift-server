@@ -178,7 +178,7 @@ async function run() {
 
         app.get('/riders/pending', async (req, res) => {
             try {
-                const query = {status: 'pending'};
+                const query = { status: 'pending' };
 
                 const riders = await ridersCollection.find(query).sort({ createdAt: -1 }).toArray();
 
@@ -189,6 +189,28 @@ async function run() {
                 res.status(500).send({ message: "Failed to fetch riders" });
             }
         });
+
+        app.patch('/riders/:id/approve', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await ridersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: 'approved' } }
+                );
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).send({ message: "Rider not found or already approved" });
+                }
+
+                res.send({ message: "Rider approved successfully" });
+
+            } catch (error) {
+                console.error("Error approving rider:", error);
+                res.status(500).send({ message: "Failed to approve rider" });
+            }
+        });
+
 
 
 
