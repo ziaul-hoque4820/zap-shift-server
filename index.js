@@ -190,6 +190,25 @@ async function run() {
             }
         });
 
+        app.delete('/riders/:id', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const result = await ridersCollection.deleteOne({ _id: new ObjectId(id) });
+
+                if (result.deletedCount === 0) {
+                    return res.status(404).send({ message: "Rider not found" });
+                }
+
+                res.send({ message: "Rider deleted successfully" });
+
+            } catch (error) {
+                console.error("Error deleting rider:", error);
+                res.status(500).send({ message: "Failed to delete rider" });
+            }
+        });
+
+
         app.patch('/riders/:id/approve', async (req, res) => {
             try {
                 const id = req.params.id;
