@@ -175,7 +175,21 @@ async function run() {
                 res.status(500).send({ message: "New Rider creation failed" });
             }
         });
-        ;
+
+        app.get('/riders/pending', async (req, res) => {
+            try {
+                const query = {status: 'pending'};
+
+                const riders = await ridersCollection.find(query).sort({ createdAt: -1 }).toArray();
+
+                res.send(riders);
+
+            } catch (error) {
+                console.error("Error fetching riders:", error);
+                res.status(500).send({ message: "Failed to fetch riders" });
+            }
+        });
+
 
 
         // Create a Payment Intent
