@@ -231,22 +231,64 @@ async function run() {
             try {
                 const id = req.params.id;
 
+                // Rider approve status update
+                const rider = await ridersCollection.findOne({ _id: new ObjectId(id) });
+                if (!rider) {
+                    return res.status(404).send({ message: "Rider not found" });
+                }
+
                 const result = await ridersCollection.updateOne(
                     { _id: new ObjectId(id) },
                     { $set: { status: 'approved' } }
+                );
+
+                // Update user role to 'rider' in users collection
+                await usersCollection.updateOne(
+                    { email: rider.email },
+                    { $set: { role: 'rider' } }
                 );
 
                 if (result.modifiedCount === 0) {
                     return res.status(404).send({ message: "Rider not found or already approved" });
                 }
 
-                res.send({ message: "Rider approved successfully" });
+                res.send({ message: "Rider approved & role updated successfully" });
 
             } catch (error) {
                 console.error("Error approving rider:", error);
                 res.status(500).send({ message: "Failed to approve rider" });
             }
         });
+
+        app.patch('/riders/:id/deactivate', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const rider = await ridersCollection.findOne({ _id: new ObjectId(id) });
+                if (!rider) {
+                    return res.status(404).send({ message: "Rider not found" });
+                }
+
+                // Update rider status
+                await ridersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: "deactivated" } }
+                );
+
+                // Also remove rider role
+                await usersCollection.updateOne(
+                    { email: rider.email },
+                    { $set: { role: "user" } }
+                );
+
+                res.send({ message: "Rider deactivated successfully" });
+
+            } catch (error) {
+                console.error("Error deactivating rider:", error);
+                res.status(500).send({ message: "Failed to deactivate rider" });
+            }
+        });
+
 
 
 
