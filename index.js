@@ -122,6 +122,24 @@ async function run() {
             }
         });
 
+        app.get('/riders/approved', async (req, res) => {
+            try {
+                const query = { status: 'approved' };
+
+                const riders = await ridersCollection
+                    .find(query)
+                    .sort({ createdAt: -1 })
+                    .toArray();
+
+                res.send(riders);
+
+            } catch (error) {
+                console.error("Error fetching approved riders:", error);
+                res.status(500).send({ message: "Failed to fetch approved riders" });
+            }
+        });
+
+
 
         app.post('/parcels', verifyFirebaseToken, async (req, res) => {
             try {
