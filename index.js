@@ -289,6 +289,52 @@ async function run() {
             }
         });
 
+        // Get all deactivated riders
+        app.get('/riders/deactivated', async (req, res) => {
+            try {
+                const riders = await ridersCollection
+                    .find({ status: "deactivated" })
+                    .sort({ createdAt: -1 })
+                    .toArray();
+
+                res.send(riders);
+            } catch (error) {
+                console.error("Error fetching deactivated riders:", error);
+                res.status(500).send({ message: "Failed to fetch deactivated riders" });
+            }
+        });
+
+
+        app.patch('/riders/:id/activate', async (req, res) => {
+            try {
+                const id = req.params.id;
+
+                const rider = await ridersCollection.findOne({ _id: new ObjectId(id) });
+                if (!rider) {
+                    return res.status(404).send({ message: "Rider not found" });
+                }
+
+                // Update rider status
+                await ridersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { status: "approved" } }
+                );
+
+                // Update user role to rider
+                await usersCollection.updateOne(
+                    { email: rider.email },
+                    { $set: { role: "rider" } }
+                );
+
+                res.send({ message: "Rider activated successfully" });
+
+            } catch (error) {
+                console.error("Error activating rider:", error);
+                res.status(500).send({ message: "Failed to activate rider" });
+            }
+        });
+
+
 
 
 
