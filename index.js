@@ -106,6 +106,26 @@ async function run() {
             }
         })
 
+
+        app.patch('/users/:id/role', async (req, res) => {
+            const { id } = req.params;
+            const { role } = req.body;
+            if (!['user', 'admin'].includes(role)) {
+                return res.status(400).send({ message: "Invalid role specified" });
+            }
+
+            try {
+                const result = await usersCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    { $set: { role } }
+                );
+                res.send({ message: `user role updated to ${role}` }, result);
+            } catch (error) {
+                console.error("Error updating user role:", error);
+                res.status(500).send({ message: "Failed to update user role" });
+            }
+        })
+
         // sort parcels by email id
         app.get('/parcels', verifyFirebaseToken, async (req, res) => {
             try {
