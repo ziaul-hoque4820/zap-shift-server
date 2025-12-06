@@ -65,6 +65,29 @@ async function run() {
 
 
         // users API
+        app.get('/users/search', async (req, res) => {
+            const emailQuery = req.query.email;
+            if (!emailQuery) {
+                return res.status(400).send({ message: "Email query parameter is required" });
+            }
+
+            const regex = new RegExp(emailQuery, 'i'); // 'i' for case-insensitive search
+
+            try {
+                const users = await usersCollection
+                    .find({ email: { $regex: regex } })
+                    // .project({ email: 1, createdAt: 1, role: 1 })
+                    .limit(20)
+                    .toArray();
+
+                res.status(200).send(users);
+            } catch (error) {
+                console.error("Error searching users:", error);
+                res.status(500).send({ message: "Failed to search users" });
+            }
+        })
+
+
         app.post('/users', async (req, res) => {
             try {
                 const { email } = req.body;
