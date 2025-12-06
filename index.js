@@ -87,6 +87,27 @@ async function run() {
             }
         })
 
+        app.get('/users/:email/role', async (req, res) => {
+            try {
+                const email = req.params.email;
+
+                if (!email) {
+                    return res.status(400).send({ message: "Email parameter is required" });
+                }
+
+                const user = await usersCollection.findOne({ email: email });
+
+                if (!user) {
+                    return res.status(404).send({ message: "User not found" });
+                }
+
+                res.status(200).send({ role: user.role || 'user' });
+            } catch (error) {
+                console.error("Error fetching user role:", error);
+                res.status(500).send({ message: "Failed to get user role" });
+            }
+        })
+
 
         app.post('/users', async (req, res) => {
             try {
