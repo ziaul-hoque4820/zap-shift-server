@@ -316,6 +316,43 @@ async function run() {
             }
         });
 
+        app.get('/riders/available', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+            try {
+                const { area } = req.query;
+                if (!area) return res.status(400).send({ message: "Area is required" });
+
+                const normalizedArea = (area || "").trim();
+                function escapeRegExp(string) {
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                }
+
+                const found = await ridersCollection.find({
+                    status: "approved",
+                    $or: [
+                        { work_status: { $exists: false } },
+                        { work_status: "available" }
+                    ],
+                    areasToRide: { $in: [new RegExp(`^${escapeRegExp(normalizedArea)}$`, "i")] }
+                }).sort({ appliedAt: -1 }).toArray();
+
+                // map to frontend-friendly fields
+                const riders = found.map(r => ({
+                    _id: r._id.toString ? r._id.toString() : r._id,
+                    name: r.name,
+                    phone: r.contact,
+                    areas: r.areasToRide || [],
+                    status: r.status,
+                    work_status: r.work_status
+                }));
+
+                res.send({ riders });
+
+            } catch (error) {
+                console.error("Error fetching available riders:", error);
+                res.status(500).send({ message: "Failed to fetch available riders" });
+            }
+        });
+
 
         app.delete('/riders/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
