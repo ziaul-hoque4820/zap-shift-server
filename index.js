@@ -169,9 +169,13 @@ async function run() {
         // sort parcels by email id
         app.get('/parcels', verifyFirebaseToken, async (req, res) => {
             try {
-                const userEmail = req.query.email;
+                const email = req.query.email;
 
-                const query = userEmail ? { created_by: userEmail } : {};
+                if (!email) {
+                    return res.status(400).send({ message: "Email required" });
+                }
+
+                const query = { created_by: email }
 
                 const parcels = await parcelCollection
                     .find(query)
@@ -185,6 +189,28 @@ async function run() {
                 res.status(500).send({ message: "Failed to retrieve parcels" });
             }
         });
+
+
+        app.get('/admin/parcels', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+            try {
+                const { payment_status, delivery_status } = req.query;
+
+                let query = {};
+
+                if (payment_status) query.payment_status = payment_status;
+                if (delivery_status) query.delivery_status = delivery_status;
+
+                const parcels = await parcelCollection
+                    .find(query)
+                    .sort({ creation_date: -1 })  // NEWEST FIRST
+                    .toArray();
+
+                res.status(200).send(parcels);
+            } catch (error) {
+                console.error("Error fetching parcels:", error);
+                res.status(500).send({ message: "Error fetching admin parcels" });
+            }
+        })
 
         // get a specific parcel by ID
         app.get('/parcels/:id', verifyFirebaseToken, async (req, res) => {
@@ -204,24 +230,6 @@ async function run() {
                 res.status(500).send({ message: "Failed to get parcels" });
             }
         });
-
-        app.get('/riders/approved', verifyFirebaseToken, verifyAdmin, async (req, res) => {
-            try {
-                const query = { status: 'approved' };
-
-                const riders = await ridersCollection
-                    .find(query)
-                    .sort({ createdAt: -1 })
-                    .toArray();
-
-                res.send(riders);
-
-            } catch (error) {
-                console.error("Error fetching approved riders:", error);
-                res.status(500).send({ message: "Failed to fetch approved riders" });
-            }
-        });
-
 
 
         app.post('/parcels', verifyFirebaseToken, async (req, res) => {
@@ -290,6 +298,24 @@ async function run() {
                 res.status(500).send({ message: "Failed to fetch riders" });
             }
         });
+
+        app.get('/riders/approved', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+            try {
+                const query = { status: 'approved' };
+
+                const riders = await ridersCollection
+                    .find(query)
+                    .sort({ createdAt: -1 })
+                    .toArray();
+
+                res.send(riders);
+
+            } catch (error) {
+                console.error("Error fetching approved riders:", error);
+                res.status(500).send({ message: "Failed to fetch approved riders" });
+            }
+        });
+
 
         app.delete('/riders/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
