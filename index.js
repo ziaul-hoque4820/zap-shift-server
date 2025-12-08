@@ -63,9 +63,28 @@ async function run() {
             }
         };
 
+        // verify admin middleware
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decodedEmail;
+
+            if (!email) {
+                return res.status(401).send({ message: "Unauthorized" });
+            }
+
+            const user = await usersCollection.findOne({ email });
+
+            if (!user || user.role !== "admin") {
+                return res.status(403).send({ message: "Access denied" });
+            }
+
+            next();
+        };
+
+
+
 
         // users API
-        app.get('/users/search', async (req, res) => {
+        app.get('/users/search', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const emailQuery = req.query.email;
             if (!emailQuery) {
                 return res.status(400).send({ message: "Email query parameter is required" });
@@ -87,7 +106,7 @@ async function run() {
             }
         })
 
-        app.get('/users/:email/role', async (req, res) => {
+        app.get('/users/:email/role', verifyFirebaseToken, async (req, res) => {
             try {
                 const email = req.params.email;
 
@@ -128,7 +147,7 @@ async function run() {
         })
 
 
-        app.patch('/users/:id/role', async (req, res) => {
+        app.patch('/users/:id/role', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const { id } = req.params;
             const { role } = req.body;
             if (!['user', 'admin'].includes(role)) {
@@ -186,7 +205,7 @@ async function run() {
             }
         });
 
-        app.get('/riders/approved', async (req, res) => {
+        app.get('/riders/approved', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const query = { status: 'approved' };
 
@@ -231,7 +250,7 @@ async function run() {
         });
 
         // Riders API
-        app.post('/riders', async (req, res) => {
+        app.post('/riders', verifyFirebaseToken, async (req, res) => {
             try {
                 const rider = req.body;
 
@@ -258,7 +277,7 @@ async function run() {
             }
         });
 
-        app.get('/riders/pending', async (req, res) => {
+        app.get('/riders/pending', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const query = { status: 'pending' };
 
@@ -272,7 +291,7 @@ async function run() {
             }
         });
 
-        app.delete('/riders/:id', async (req, res) => {
+        app.delete('/riders/:id', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -291,7 +310,7 @@ async function run() {
         });
 
 
-        app.patch('/riders/:id/approve', async (req, res) => {
+        app.patch('/riders/:id/approve', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -324,7 +343,7 @@ async function run() {
             }
         });
 
-        app.patch('/riders/:id/deactivate', async (req, res) => {
+        app.patch('/riders/:id/deactivate', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
 
@@ -354,7 +373,7 @@ async function run() {
         });
 
         // Get all deactivated riders
-        app.get('/riders/deactivated', async (req, res) => {
+        app.get('/riders/deactivated', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const riders = await ridersCollection
                     .find({ status: "deactivated" })
@@ -369,7 +388,7 @@ async function run() {
         });
 
 
-        app.patch('/riders/:id/activate', async (req, res) => {
+        app.patch('/riders/:id/activate', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const id = req.params.id;
 
