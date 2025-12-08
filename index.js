@@ -316,6 +316,7 @@ async function run() {
             }
         });
 
+        // Get available riders in a specific area
         app.get('/riders/available', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             try {
                 const { area } = req.query;
@@ -369,6 +370,57 @@ async function run() {
             } catch (error) {
                 console.error("Error deleting rider:", error);
                 res.status(500).send({ message: "Failed to delete rider" });
+            }
+        });
+
+
+        // Assign rider to parcel
+        app.patch('/parcels/:id/assign-rider', verifyFirebaseToken, verifyAdmin, async (req, res) => {
+            try {
+                const parcelId = req.params.id;
+                const { riderId } = req.body;
+
+                if (!riderId) {
+                    return res.status(400).send({ message: "Rider ID is required" });
+                }
+
+                // Find parcel
+                const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+                if (!parcel) {
+                    return res.status(404).send({ message: "Parcel not found" });
+                }
+
+                // Find rider
+                const rider = await ridersCollection.findOne({ _id: new ObjectId(riderId) });
+                if (!rider || rider.status !== "approved") {
+                    return res.status(404).send({ message: "Rider not found or not approved" });
+                }
+
+                // Update parcel → assign rider
+                const parcelUpdate = await parcelCollection.updateOne(
+                    { _id: new ObjectId(parcelId) },
+                    {
+                        $set: {
+                            riderId: rider._id.toString(),
+                            riderName: rider.name,
+                            riderPhone: rider.contact,
+                            delivery_status: "assigned",
+                            assigned_at: new Date()
+                        }
+                    }
+                );
+
+                // Update rider → mark as busy
+                await ridersCollection.updateOne(
+                    { _id: new ObjectId(riderId) },
+                    { $set: { work_status: "busy" } }
+                );
+
+                res.send({ success: true, message: "Rider assigned successfully" });
+
+            } catch (error) {
+                console.error("Error assigning rider:", error);
+                res.status(500).send({ message: "Failed to assign rider" });
             }
         });
 
