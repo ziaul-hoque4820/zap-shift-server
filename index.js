@@ -12,7 +12,8 @@ app.use(express.json());
 
 
 // firebase admin initialization
-const serviceAccount = require("./zap-shift-firebase-adminsdk.json");
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, "\n");
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -404,7 +405,8 @@ async function run() {
                             riderId: rider._id.toString(),
                             riderName: rider.name,
                             riderPhone: rider.contact,
-                            delivery_status: "assigned",
+                            riderEmail: rider.email,
+                            delivery_status: "in_transit",
                             assigned_at: new Date()
                         }
                     }
@@ -533,7 +535,31 @@ async function run() {
         });
 
 
+        // Parcels assigned to a rider {Riders Dashboard}
+        app.get('/rider/parcels', async (req, res) => {
+            try {
+                const email = req.query.email;
+                if (!email) {
+                    return res.status(400).send({ message: "Rider email is required" });
+                }
 
+                const query = {
+                    riderEmail: email,
+                    delivery_status: { $in: ['in_transit', 'rider_assigned'] },
+                }
+
+                const optional = {
+                    sort: { assigned_at: -1 }  // NEWEST FIRST
+                };
+
+                const parcels = await parcelCollection.find(query, optional).toArray();
+
+                res.status(200).send(parcels);
+            } catch (error) {
+                console.error("Error fetching rider parcels:", error);
+                res.status(500).send({ message: "Failed to retrieve rider parcels" });
+            }
+        })
 
 
 
