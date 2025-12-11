@@ -81,6 +81,23 @@ async function run() {
             next();
         };
 
+        // verify Rider middleware
+        const verifyRider = async (req, res, next) => {
+            const email = req.decodedEmail;
+
+            if (!email) {
+                return res.status(401).send({ message: "Unauthorized" });
+            }
+
+            const user = await usersCollection.findOne({ email });
+
+            if (!user || user.role !== "rider") {
+                return res.status(403).send({ message: "Access denied" });
+            }
+
+            next();
+        };
+
 
 
 
@@ -536,7 +553,7 @@ async function run() {
 
 
         // Parcels assigned to a rider {Riders Dashboard}
-        app.get('/rider/parcels', verifyFirebaseToken, async (req, res) => {
+        app.get('/rider/parcels', verifyFirebaseToken, verifyRider, async (req, res) => {
             try {
                 const email = req.decodedEmail;
                 if (!email) {
@@ -563,7 +580,7 @@ async function run() {
 
 
         // Mark parcel as picked up by rider
-        app.patch('/parcels/:id/pickup', verifyFirebaseToken, async (req, res) => {
+        app.patch('/parcels/:id/pickup', verifyFirebaseToken, verifyRider, async (req, res) => {
             try {
                 const parcelId = req.params.id;
                 const { riderEmail } = req.body;
@@ -601,7 +618,7 @@ async function run() {
         });
 
         // Mark parcel as delivered by rider
-        app.patch('/parcels/:id/deliver', verifyFirebaseToken, async (req, res) => {
+        app.patch('/parcels/:id/deliver', verifyFirebaseToken, verifyRider, async (req, res) => {
             try {
                 const parcelId = req.params.id;
                 const { riderEmail } = req.body;
