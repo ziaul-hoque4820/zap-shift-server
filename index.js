@@ -691,6 +691,26 @@ async function run() {
             }
         })
 
+        // Update parcel cashout status
+        app.patch('/parcels/:id/cashout', verifyFirebaseToken, verifyFirebaseToken, async (req, res) => {
+            try {
+                const id = req.params.id;
+                const result = await parcelCollection.updateOne(
+                    { _id: new ObjectId(id) },
+                    {
+                        $set: {
+                            cashout_status: "cashed_out",
+                            cash_out_at: new Date()
+                        }
+                    }
+                );
+                res.send({ message: "Cashout status updated", result });
+            } catch (error) {
+                console.error("Error updating cashout status:", error);
+                res.status(500).send({ message: "Failed to update cashout status" });
+            }
+        })
+
 
         // Create a Payment Intent
         app.post("/create-payment-intent", verifyFirebaseToken, async (req, res) => {
