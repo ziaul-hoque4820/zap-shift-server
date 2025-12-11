@@ -160,7 +160,7 @@ async function run() {
                     { _id: new ObjectId(id) },
                     { $set: { role } }
                 );
-                res.send({ message: `user role updated to ${role}` }, result);
+                res.send({ message: `user role updated to ${role}`, result });
             } catch (error) {
                 console.error("Error updating user role:", error);
                 res.status(500).send({ message: "Failed to update user role" });
@@ -406,7 +406,7 @@ async function run() {
                             riderName: rider.name,
                             riderPhone: rider.contact,
                             riderEmail: rider.email,
-                            delivery_status: "in_transit",
+                            delivery_status: "rider_assigned",
                             assigned_at: new Date()
                         }
                     }
@@ -536,16 +536,16 @@ async function run() {
 
 
         // Parcels assigned to a rider {Riders Dashboard}
-        app.get('/rider/parcels', async (req, res) => {
+        app.get('/rider/parcels', verifyFirebaseToken, async (req, res) => {
             try {
-                const email = req.query.email;
+                const email = req.decodedEmail;
                 if (!email) {
                     return res.status(400).send({ message: "Rider email is required" });
                 }
 
                 const query = {
                     riderEmail: email,
-                    delivery_status: { $in: ['in_transit', 'rider_assigned'] },
+                    delivery_status: { $in: ['rider_assigned', 'in_transit'] },
                 }
 
                 const optional = {
@@ -561,6 +561,44 @@ async function run() {
             }
         })
 
+
+        // Mark parcel as picked up by rider
+        app.patch('/parcels/:id/pickup', verifyFirebaseToken, async (req, res) => {
+            try {
+                const parcelId = req.params.id;
+                const { riderEmail } = req.body;
+
+                if (!riderEmail) {
+                    return res.status(400).json({ message: "Rider email is required" });
+                }
+
+                const filter = { _id: new ObjectId(parcelId) };
+
+                const updateDoc = {
+                    $set: {
+                        delivery_status: "in_transit",   // UPDATED FIELD
+                        pickedUpAt: new Date(),
+                        pickedBy: riderEmail
+                    }
+                };
+
+                const result = await parcelCollection.updateOne(filter, updateDoc);
+
+                if (result.modifiedCount === 0) {
+                    return res.status(404).json({ message: "Parcel not found or already picked" });
+                }
+
+                res.json({
+                    message: "Parcel marked as picked up successfully",
+                    parcelId,
+                    delivery_status: "in_transit"
+                });
+
+            } catch (error) {
+                console.error("Error updating parcel:", error);
+                res.status(500).json({ message: "Server error while marking pickup" });
+            }
+        });
 
 
         // Create a Payment Intent
@@ -591,7 +629,6 @@ async function run() {
                 res.status(500).send({ message: "Payment Intent creation failed" });
             }
         });
-
 
         app.get("/intent-status/:id", verifyFirebaseToken, async (req, res) => {
             try {
