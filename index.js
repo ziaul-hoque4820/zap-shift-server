@@ -664,6 +664,33 @@ async function run() {
             }
         });
 
+        // completed parcel deliveries for a rider
+        app.get('/rider/completed-parcels', verifyFirebaseToken, verifyRider, async (req, res) => {
+            try {
+                const email = req.decodedEmail;
+
+                if (!email) {
+                    return res.status(400).send({ message: "Rider email is required" });
+                }
+
+                const query = {
+                    riderEmail: email,
+                    delivery_status: {
+                        $in: ['delivered', 'service_center_delivered', 'returned']
+                    }
+                };
+                const optional = {
+                    sort: { deliveredAt: -1 }  // NEWEST FIRST
+                };
+                const parcels = await parcelCollection.find(query, optional).toArray();
+
+                res.status(200).send(parcels);
+            } catch (error) {
+                console.error("Error fetching completed parcels:", error);
+                res.status(500).send({ message: "Failed to retrieve completed parcels" });
+            }
+        })
+
 
         // Create a Payment Intent
         app.post("/create-payment-intent", verifyFirebaseToken, async (req, res) => {
