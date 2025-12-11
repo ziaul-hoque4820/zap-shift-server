@@ -600,6 +600,53 @@ async function run() {
             }
         });
 
+        // Mark parcel as delivered by rider
+        app.patch('/parcels/:id/deliver', verifyFirebaseToken, async (req, res) => {
+            try {
+                const parcelId = req.params.id;
+                const { riderEmail } = req.body;
+
+                if (!riderEmail) {
+                    return res.status(400).json({ message: "Rider email is required" });
+                }
+
+                // Find the parcel first
+                const parcel = await parcelCollection.findOne({ _id: new ObjectId(parcelId) });
+
+                if (!parcel) {
+                    return res.status(404).json({ message: "Parcel not found" });
+                }
+
+                // Update parcel as delivered
+                const result = await parcelCollection.updateOne(
+                    { _id: new ObjectId(parcelId) },
+                    {
+                        $set: {
+                            delivery_status: "delivered",
+                            deliveredAt: new Date(),
+                            deliveredBy: riderEmail
+                        }
+                    }
+                );
+
+                // Mark rider available again
+                await ridersCollection.updateOne(
+                    { email: riderEmail },
+                    { $set: { work_status: "available" } }
+                );
+
+                res.json({
+                    message: "Parcel delivered successfully",
+                    parcelId,
+                    delivery_status: "delivered"
+                });
+
+            } catch (error) {
+                console.error("Error delivering parcel:", error);
+                res.status(500).json({ message: "Failed to update parcel delivery" });
+            }
+        });
+
 
         // Create a Payment Intent
         app.post("/create-payment-intent", verifyFirebaseToken, async (req, res) => {
