@@ -45,6 +45,7 @@ async function run() {
         const parcelCollection = client.db('parcelDB').collection('parcels');
         const paymentCollection = client.db('parcelDB').collection('payments');
         const ridersCollection = client.db('parcelDB').collection('riders');
+        const trackingsCollection = client.db('parcelDB').collection('trackings');
 
 
         //custom middleware to verify admin
@@ -273,6 +274,19 @@ async function run() {
                 console.log('Error Deleted parcel:', error);
                 res.status(500).send({ message: "Failed to deleted parcel" })
             }
+        });
+
+        // Tracking API
+        app.post("/trackings", async (req, res) => {
+            const update = req.body;
+
+            update.timestamp = new Date(); // ensure correct timestamp
+            if (!update.tracking_id || !update.status) {
+                return res.status(400).json({ message: "tracking_id and status are required." });
+            }
+
+            const result = await trackingsCollection.insertOne(update);
+            res.status(201).json(result);
         });
 
         // Riders API
