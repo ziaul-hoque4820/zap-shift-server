@@ -289,6 +289,30 @@ async function run() {
             res.status(201).json(result);
         });
 
+        app.get("/trackings/:trackingId", async (req, res) => {
+            try {
+                const { trackingId } = req.params;
+
+                if (!trackingId) {
+                    return res.status(400).json({ message: "Tracking ID required" });
+                }
+
+                const updates = await trackingsCollection
+                    .find({ tracking_id: trackingId })
+                    .sort({ timestamp: 1 })
+                    .toArray();
+
+                if (!updates.length) {
+                    return res.status(404).json({ message: "No tracking found" });
+                }
+
+                res.json(updates);
+            } catch (error) {
+                res.status(500).json({ message: "Failed to fetch tracking" });
+            }
+        });
+
+
         // Riders API
         app.post('/riders', verifyFirebaseToken, async (req, res) => {
             try {
