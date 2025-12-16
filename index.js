@@ -251,7 +251,7 @@ async function run() {
         });
 
         // Get parcel count by delivery status
-        app.get('/parcels/delivery/status-count', async (req, res) => {
+        app.get('/parcels/delivery/status-count', verifyFirebaseToken, verifyAdmin, async (req, res) => {
             const pipeline = [
                 {
                     $group: {
@@ -301,7 +301,7 @@ async function run() {
         });
 
         // Tracking API
-        app.post("/trackings", async (req, res) => {
+        app.post("/trackings", verifyFirebaseToken, async (req, res) => {
             const update = req.body;
 
             update.timestamp = new Date(); // ensure correct timestamp
@@ -313,7 +313,7 @@ async function run() {
             res.status(201).json(result);
         });
 
-        app.get("/trackings/:trackingId", async (req, res) => {
+        app.get("/trackings/:trackingId", verifyFirebaseToken, async (req, res) => {
             try {
                 const { trackingId } = req.params;
 
